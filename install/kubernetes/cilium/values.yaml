@@ -1083,17 +1083,39 @@ enableIPv6Masquerade: true
 egressGateway:
   enabled: false
 
-# -- Specify the IPv4 CIDR for native routing (ie to avoid IP masquerade for).
-# This value corresponds to the configured cluster-cidr.
+# -- Allows to explicitly specify the IPv4 CIDR for native routing.
+# When specified, Cilium assumes networking for this CIDR is preconfigured and
+# hands traffic destined for that range to the Linux network stack without
+# applying any SNAT.
+# The network stack will then be responsible for routing it to its destination,
+# potentially with any NAT applied if necessary.
+# Moreover, if the Kubernetes cluster CIDR is included in the native routing
+# CIDR, the user must configure the routes to reach pods, either manually or by
+# setting the autoDirectNodeRoutes flag.
+#
 # Deprecated in favor of ipv4NativeRoutingCIDR, will be removed in 1.12.
 # nativeRoutingCIDR:
 
-# -- Specify the IPv4 CIDR for native routing (ie to avoid IP masquerade for).
-# This value corresponds to the configured cluster-cidr.
+# -- Allows to explicitly specify the IPv4 CIDR for native routing.
+# When specified, Cilium assumes networking for this CIDR is preconfigured and
+# hands traffic destined for that range to the Linux network stack without
+# applying any SNAT.
+# The network stack will then be responsible for routing it to its destination,
+# potentially with any NAT applied if necessary.
+# Moreover, if the Kubernetes cluster CIDR is included in the native routing
+# CIDR, the user must configure the routes to reach pods, either manually or by
+# setting the autoDirectNodeRoutes flag.
 # ipv4NativeRoutingCIDR:
 
-# -- Specify the IPv6 CIDR for native routing (ie to avoid IP masquerade for).
-# This value corresponds to the configured cluster-cidr.
+# -- Allows to explicitly specify the IPv6 CIDR for native routing.
+# When specified, Cilium assumes networking for this CIDR is preconfigured and
+# hands traffic destined for that range to the Linux network stack without
+# applying any SNAT.
+# The network stack will then be responsible for routing it to its destination,
+# potentially with any NAT applied if necessary.
+# Moreover, if the Kubernetes cluster CIDR is included in the native routing
+# CIDR, the user must configure the routes to reach pods, either manually or by
+# setting the autoDirectNodeRoutes flag.
 # ipv6NativeRoutingCIDR:
 
 # -- cilium-monitor sidecar.
