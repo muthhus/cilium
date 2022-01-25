@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -17,6 +18,7 @@ import (
 
 	observerpb "github.com/cilium/cilium/api/v1/observer"
 	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
+	"github.com/cilium/cilium/pkg/hubble/peer"
 	peerTypes "github.com/cilium/cilium/pkg/hubble/peer/types"
 	"github.com/cilium/cilium/pkg/hubble/relay/observer"
 	"github.com/cilium/cilium/pkg/hubble/relay/pool"
@@ -30,6 +32,8 @@ var (
 	// WithInsecureServer() is provided.
 	ErrNoServerTLSConfig = errors.New("no server TLS config is set")
 )
+
+const hubblePeerService = "hubble-peer"
 
 // Server is a proxy that connects to a running instance of hubble gRPC server
 // via unix domain socket.
@@ -55,13 +59,20 @@ func New(options ...Option) (*Server, error) {
 		return nil, ErrNoServerTLSConfig
 	}
 
+	var peerSvc peerTypes.ClientBuilder = &peerTypes.LocalClientBuilder{
+		DialTimeout: opts.dialTimeout,
+	}
+	if !strings.HasPrefix(opts.peerTarget, "unix://") {
+		peerSvc = &peerTypes.RemoteClientBuilder{
+			DialTimeout:   opts.dialTimeout,
+			TLSConfig:     opts.clientTLSConfig,
+			TLSServerName: peer.TLSServerName(hubblePeerService, opts.clusterName),
+		}
+	}
+
 	pm, err := pool.NewPeerManager(
-		pool.WithPeerServiceAddress(opts.hubbleTarget),
-		pool.WithPeerClientBuilder(
-			&peerTypes.LocalClientBuilder{
-				DialTimeout: opts.dialTimeout,
-			},
-		),
+		pool.WithPeerServiceAddress(opts.peerTarget),
+		pool.WithPeerClientBuilder(peerSvc),
 		pool.WithClientConnBuilder(pool.GRPCClientConnBuilder{
 			DialTimeout: opts.dialTimeout,
 			Options: []grpc.DialOption{

@@ -696,10 +696,10 @@ data:
     {{.}}
 {{- end }}
 {{- end }}
-{{- if hasKey .Values.hubble "listenAddress" }}
-  # An additional address for Hubble server to listen to (e.g. ":4244").
-  hubble-listen-address: {{ .Values.hubble.listenAddress | quote }}
-{{- if .Values.hubble.tls.enabled }}
+{{- if hasKey .Values.hubble "listenPort" }}
+  # An additional port/address for Hubble server to listen to (e.g. ":4244").
+  hubble-listen-address: ":{{ .Values.hubble.listenPort }}"
+{{- if and .Values.hubble.tls.enabled }}
   hubble-disable-tls: "false"
   hubble-tls-cert-file: /var/lib/cilium/tls/hubble/server.crt
   hubble-tls-key-file: /var/lib/cilium/tls/hubble/server.key

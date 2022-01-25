@@ -614,14 +614,16 @@ hubble:
   # -- Unix domain socket path to listen to when Hubble is enabled.
   socketPath: /var/run/cilium/hubble.sock
 
-  # -- An additional address for Hubble to listen to.
-  # Set this field ":4244" if you are enabling Hubble Relay, as it assumes that
+  # -- An additional port/address for Hubble to listen to.
+  # Set this field "4244" if you are enabling Hubble Relay, as it assumes that
   # Hubble is listening on port 4244.
-  listenAddress: ":4244"
-
+  listenPort: "4244"
+  # -- Create a K8s Service for the Peer service, and specify its port.
+  # ex. "4254"
+  peerServicePort: ~
   # -- TLS configuration for Hubble
   tls:
-    # -- Enable mutual TLS for listenAddress. Setting this value to false is
+    # -- Enable mutual TLS for listenPort (address). Setting this value to false is
     # highly discouraged as the Hubble API provides access to potentially
     # sensitive network flow metadata and is exposed on the host network.
     enabled: true

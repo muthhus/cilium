@@ -609,10 +609,10 @@
      - Enable Hubble (true by default).
      - bool
      - ``true``
-   * - hubble.listenAddress
-     - An additional address for Hubble to listen to. Set this field ":4244" if you are enabling Hubble Relay, as it assumes that Hubble is listening on port 4244.
+   * - hubble.listenPort
+     - An additional port/address for Hubble to listen to. Set this field "4244" if you are enabling Hubble Relay, as it assumes that Hubble is listening on port 4244.
      - string
-     - ``":4244"``
+     - ``"4244"``
    * - hubble.metrics
      - Hubble metrics configuration. See https://docs.cilium.io/en/stable/operations/metrics/#hubble-metrics for more comprehensive documentation about Hubble metrics.
      - object
@@ -637,6 +637,10 @@
      - Labels to add to ServiceMonitor hubble
      - object
      - ``{}``
+   * - hubble.peerServicePort
+     - Create a K8s Service for the Peer service, and specify its port. ex. "4254"
+     - string
+     - ``nil``
    * - hubble.relay.dialTimeout
      - Dial timeout to connect to the local hubble instance to receive peer information (e.g. "30s").
      - string
@@ -782,7 +786,7 @@
      - string
      - ``""``
    * - hubble.tls.enabled
-     - Enable mutual TLS for listenAddress. Setting this value to false is highly discouraged as the Hubble API provides access to potentially sensitive network flow metadata and is exposed on the host network.
+     - Enable mutual TLS for listenPort (address). Setting this value to false is highly discouraged as the Hubble API provides access to potentially sensitive network flow metadata and is exposed on the host network.
      - bool
      - ``true``
    * - hubble.tls.server

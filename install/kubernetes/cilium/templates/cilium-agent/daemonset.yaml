@@ -307,7 +307,7 @@ spec:
           mountPath: /var/lib/cilium/bgp
           readOnly: true
         {{- end }}
-        {{- if and .Values.hubble.enabled .Values.hubble.tls.enabled (hasKey .Values.hubble "listenAddress") }}
+        {{- if and .Values.hubble.enabled .Values.hubble.tls.enabled (hasKey .Values.hubble "listenPort") }}
         - name: hubble-tls
           mountPath: /var/lib/cilium/tls/hubble
           readOnly: true
@@ -568,7 +568,7 @@ spec:
         configMap:
           name: bgp-config
       {{- end }}
-      {{- if and .Values.hubble.enabled .Values.hubble.tls.enabled (hasKey .Values.hubble "listenAddress") }}
+      {{- if and .Values.hubble.enabled .Values.hubble.tls.enabled (hasKey .Values.hubble "listenPort") }}
       - name: hubble-tls
         projected:
           # note: the leading zero means this number is in octal representation: do not remove it

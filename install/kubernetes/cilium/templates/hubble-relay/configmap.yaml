@@ -7,7 +7,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   config.yaml: |
+    cluster-name: {{ .Values.cluster.name }}
+    {{- if and .Values.hubble.enabled (hasKey .Values.hubble "listenPort") (hasKey .Values.hubble "peerServicePort") }}
+    peer-service: "hubble-peer.{{ .Release.Namespace }}:{{ .Values.hubble.peerServicePort }}"
+    {{- else }}
     peer-service: unix://{{ .Values.hubble.socketPath }}
+    {{- end }}
     listen-address: {{ .Values.hubble.relay.listenHost }}:{{ .Values.hubble.relay.listenPort }}
     dial-timeout: {{ .Values.hubble.relay.dialTimeout }}
     retry-timeout: {{ .Values.hubble.relay.retryTimeout }}

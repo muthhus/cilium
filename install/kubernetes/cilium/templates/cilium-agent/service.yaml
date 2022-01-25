@@ -1,4 +1,5 @@
 {{- if and .Values.agent (not .Values.preflight.enabled) .Values.prometheus.enabled }}
+---
 {{- if .Values.prometheus.serviceMonitor.enabled }}
 apiVersion: v1
 kind: Service
@@ -42,5 +43,26 @@ spec:
     port: {{ .Values.proxy.prometheus.port }}
     protocol: TCP
     targetPort: envoy-metrics
+{{- end }}
+{{- end }}
+{{- if and .Values.hubble.enabled (hasKey .Values.hubble "listenPort") (hasKey .Values.hubble "peerServicePort") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hubble-peer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    k8s-app: cilium
+spec:
+  selector:
+    k8s-app: cilium
+  ports:
+  - name: peer-service
+    port: {{ .Values.hubble.peerServicePort }}
+    protocol: TCP
+    targetPort: {{ .Values.hubble.listenPort }}
+{{- if semverCompare ">=1.22-0" .Capabilities.KubeVersion.GitVersion }}
+  internalTrafficPolicy: Local
 {{- end }}
 {{- end }}

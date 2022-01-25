@@ -153,51 +153,45 @@ func (d *Daemon) launchHubble() {
 	go d.hubbleObserver.Start()
 	d.monitorAgent.RegisterNewConsumer(monitor.NewConsumer(d.hubbleObserver))
 
-	// configure a local hubble instance that serves more gRPC services
-	sockPath := "unix://" + option.Config.HubbleSocketPath
-	var peerServiceOptions []serviceoption.Option
-	if option.Config.HubbleTLSDisabled {
-		peerServiceOptions = append(peerServiceOptions, serviceoption.WithoutTLSInfo())
-	}
+	var (
+		peerSvc            *peer.Service
+		localServerEnabled = len(option.Config.HubbleSocketPath) > 0
+	)
+	if localServerEnabled {
+		// configure a local hubble instance that serves more gRPC services
+		sockPath := "unix://" + option.Config.HubbleSocketPath
+		var peerServiceOptions []serviceoption.Option
+		if option.Config.HubbleTLSDisabled {
+			peerServiceOptions = append(peerServiceOptions, serviceoption.WithoutTLSInfo())
+		}
+		peerSvc = peer.NewService(d.nodeDiscovery.Manager, peerServiceOptions...)
+		localSrvOpts := []serveroption.Option{
+			serveroption.WithUnixSocketListener(sockPath),
+			serveroption.WithHealthService(),
+			serveroption.WithObserverService(d.hubbleObserver),
+			serveroption.WithPeerService(peerSvc),
+			serveroption.WithInsecure(),
+		}
 
-	localSrvOpts := []serveroption.Option{
-		serveroption.WithUnixSocketListener(sockPath),
-		serveroption.WithHealthService(),
-		serveroption.WithObserverService(d.hubbleObserver),
-		serveroption.WithPeerService(peer.NewService(d.nodeDiscovery.Manager, peerServiceOptions...)),
-		serveroption.WithInsecure(),
-	}
+		localSrvOpts = d.addRecorderServiceOpt(logger, localSrvOpts)
 
-	if option.Config.EnableRecorder && option.Config.EnableHubbleRecorderAPI {
-		dispatch, err := sink.NewDispatch(option.Config.HubbleRecorderSinkQueueSize)
+		localSrv, err := server.NewServer(logger, localSrvOpts...)
 		if err != nil {
-			logger.WithError(err).Error("Failed to initialize Hubble recorder sink dispatch")
+			logger.WithError(err).Error("Failed to initialize local Hubble server")
 			return
 		}
-		d.monitorAgent.RegisterNewConsumer(dispatch)
-		svc, err := recorder.NewService(d.rec, dispatch,
-			recorderoption.WithStoragePath(option.Config.HubbleRecorderStoragePath))
-		if err != nil {
-			logger.WithError(err).Error("Failed to initialize Hubble recorder service")
+		logger.WithField("address", sockPath).Info("Starting local Hubble server")
+		if err := localSrv.Serve(); err != nil {
+			logger.WithError(err).Error("Failed to start local Hubble server")
 			return
 		}
-		localSrvOpts = append(localSrvOpts, serveroption.WithRecorderService(svc))
+		go func() {
+			<-d.ctx.Done()
+			localSrv.Stop()
+		}()
+	} else {
+		logger.Info("Local Hubble Server was not enabled")
 	}
-
-	localSrv, err := server.NewServer(logger, localSrvOpts...)
-	if err != nil {
-		logger.WithError(err).Error("Failed to initialize local Hubble server")
-		return
-	}
-	logger.WithField("address", sockPath).Info("Starting local Hubble server")
-	if err := localSrv.Serve(); err != nil {
-		logger.WithError(err).Error("Failed to start local Hubble server")
-		return
-	}
-	go func() {
-		<-d.ctx.Done()
-		localSrv.Stop()
-	}()
 
 	// configure another hubble instance that serve fewer gRPC services
 	address := option.Config.HubbleListenAddress
@@ -205,9 +199,17 @@ func (d *Daemon) launchHubble() {
 		if option.Config.HubbleTLSDisabled {
 			logger.WithField("address", address).Warn("Hubble server will be exposing its API insecurely on this address")
 		}
+		if peerSvc == nil {
+			var peerServiceOptions []serviceoption.Option
+			if option.Config.HubbleTLSDisabled {
+				peerServiceOptions = append(peerServiceOptions, serviceoption.WithoutTLSInfo())
+			}
+			peerSvc = peer.NewService(d.nodeDiscovery.Manager, peerServiceOptions...)
+		}
 		options := []serveroption.Option{
 			serveroption.WithTCPListener(address),
 			serveroption.WithHealthService(),
+			serveroption.WithPeerService(peerSvc),
 			serveroption.WithObserverService(d.hubbleObserver),
 		}
 
@@ -239,6 +241,10 @@ func (d *Daemon) launchHubble() {
 			options = append(options, serveroption.WithServerTLS(tlsServerConfig))
 		}
 
+		if !localServerEnabled {
+			options = d.addRecorderServiceOpt(logger, options)
+		}
+
 		srv, err := server.NewServer(logger, options...)
 		if err != nil {
 			logger.WithError(err).Error("Failed to initialize Hubble server")
@@ -265,6 +271,25 @@ func (d *Daemon) launchHubble() {
 			}
 		}()
 	}
+}
+
+func (d *Daemon) addRecorderServiceOpt(logger *logrus.Entry, options []serveroption.Option) []serveroption.Option {
+	if option.Config.EnableRecorder && option.Config.EnableHubbleRecorderAPI {
+		dispatch, err := sink.NewDispatch(option.Config.HubbleRecorderSinkQueueSize)
+		if err != nil {
+			logger.WithError(err).Error("Failed to initialize Hubble recorder sink dispatch")
+			return options
+		}
+		d.monitorAgent.RegisterNewConsumer(dispatch)
+		svc, err := recorder.NewService(d.rec, dispatch,
+			recorderoption.WithStoragePath(option.Config.HubbleRecorderStoragePath))
+		if err != nil {
+			logger.WithError(err).Error("Failed to initialize Hubble recorder service")
+			return options
+		}
+		options = append(options, serveroption.WithRecorderService(svc))
+	}
+	return options
 }
 
 // GetIdentity looks up identity by ID from Cilium's identity cache. Hubble uses the identity info
