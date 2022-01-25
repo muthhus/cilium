@@ -2707,6 +2707,11 @@ func (c *DaemonConfig) Populate() {
 		}
 	}
 
+	if c.EnableIPv4 && nativeRoutingCIDR == "" && ipv4NativeRoutingCIDR == "" && c.EnableAutoDirectRouting {
+		log.Warnf("%s should not be enabled when %s is not set as this configuration may led to pod to pod traffic being masqueraded, ",
+			"which can cause problems with performance, observability and policy", EnableAutoDirectRoutingName, IPv4NativeRoutingCIDR)
+	}
+
 	ipv6NativeRoutingCIDR := viper.GetString(IPv6NativeRoutingCIDR)
 
 	if ipv6NativeRoutingCIDR != "" {
@@ -2715,6 +2720,11 @@ func (c *DaemonConfig) Populate() {
 		if len(c.IPv6NativeRoutingCIDR.IP) != net.IPv6len {
 			log.Fatalf("%s must be an IPv6 CIDR", IPv6NativeRoutingCIDR)
 		}
+	}
+
+	if c.EnableIPv6 && ipv6NativeRoutingCIDR == "" && c.EnableAutoDirectRouting {
+		log.Warnf("%s should not be enabled when %s is not set as this configuration may led to pod to pod traffic being masqueraded, ",
+			"which can cause problems with performance, observability and policy", EnableAutoDirectRoutingName, IPv6NativeRoutingCIDR)
 	}
 
 	if err := c.calculateBPFMapSizes(); err != nil {
